@@ -62,8 +62,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'hex_list_projects': {
         const validated = z.object({
           limit: z.number().min(1).max(100).optional(),
-          offset: z.number().min(0).optional(),
-          statusFilter: z.array(z.string()).optional(),
+          after: z.string().optional(),
+          statuses: z.array(z.string()).optional().default(['Blessed']),
         }).parse(args);
 
         const result = await hexClient.listProjects(validated);
@@ -93,11 +93,67 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case 'hex_get_project_url': {
+        const validated = z.object({
+          projectId: z.string(),
+          viewMode: z.enum(['app', 'edit']).optional().default('app'),
+        }).parse(args);
+
+        const baseUrl = 'https://app.hex.tech';
+        const url = validated.viewMode === 'app' 
+          ? `${baseUrl}/app/${validated.projectId}/latest`
+          : `${baseUrl}/project/${validated.projectId}`;
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `View project at: ${url}\n\nThis URL shows the latest published/cached results without triggering a new run.`,
+            },
+          ],
+        };
+      }
+
+      case 'hex_view_dashboard': {
+        const validated = z.object({
+          projectId: z.string(),
+        }).parse(args);
+
+        try {
+          // Get project info
+          const project = await hexClient.getProject(validated.projectId);
+          
+          // Generate viewing URL
+          const baseUrl = 'https://app.hex.tech';
+          const url = `${baseUrl}/app/${validated.projectId}/latest`;
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `**${project.name || 'Untitled Project'}**\n\nView dashboard at: ${url}\n\nThis shows the latest cached/scheduled results without triggering a new run.\n\nProject details:\n- Status: ${project.status || 'Unknown'}\n- Updated: ${project.updatedAt || 'Unknown'}\n- Owner: ${project.owner?.email || 'Unknown'}`,
+              },
+            ],
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error viewing dashboard: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+          };
+        }
+      }
+
       // Run tools
       case 'hex_run_project': {
         const validated = z.object({
           projectId: z.string(),
           inputs: z.record(z.any()).optional(),
+          useCachedSqlResults: z.boolean().optional().default(true),
+          updatePublishedResults: z.boolean().optional().default(false),
           updateCache: z.boolean().optional(),
           notifyWhenNotPending: z.boolean().optional(),
           dryRun: z.boolean().optional(),

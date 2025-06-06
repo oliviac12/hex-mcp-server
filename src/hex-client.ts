@@ -67,32 +67,30 @@ export class HexApiClient {
 
   async listProjects(params?: {
     limit?: number;
-    offset?: number;
-    statusFilter?: string[];
-  }): Promise<{ projects: HexProject[]; pageInfo: PageInfo }> {
+    after?: string;
+    statuses?: string[];
+  }): Promise<{ projects: HexProject[]; pageInfo: any }> {
     const queryParams = new URLSearchParams();
     if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.offset) queryParams.append('offset', params.offset.toString());
-    if (params?.statusFilter?.length) {
-      params.statusFilter.forEach(status => queryParams.append('statusFilter', status));
+    if (params?.after) queryParams.append('after', params.after);
+    if (params?.statuses?.length) {
+      params.statuses.forEach(status => queryParams.append('statuses', status));
     }
 
     const response = await this.request<any>(`projects?${queryParams.toString()}`);
     
     return {
-      projects: response.data || [],
+      projects: response.values || [],
       pageInfo: {
-        limit: response.limit || 50,
-        offset: response.offset || 0,
-        totalItems: response.totalItems || 0,
-        hasMore: response.hasMore || false,
+        after: response.pagination?.after || null,
+        before: response.pagination?.before || null,
       },
     };
   }
 
   async getProject(projectId: string): Promise<HexProject> {
     const response = await this.request<any>(`projects/${projectId}`);
-    return response.data;
+    return response;
   }
 
   async runProject(
@@ -100,6 +98,8 @@ export class HexApiClient {
     params?: {
       inputs?: Record<string, any>;
       updateCache?: boolean;
+      useCachedSqlResults?: boolean;
+      updatePublishedResults?: boolean;
       notifyWhenNotPending?: boolean;
       dryRun?: boolean;
     }
@@ -107,6 +107,8 @@ export class HexApiClient {
     const body: any = {};
     if (params?.inputs) body.inputs = params.inputs;
     if (params?.updateCache !== undefined) body.updateCache = params.updateCache;
+    if (params?.useCachedSqlResults !== undefined) body.useCachedSqlResults = params.useCachedSqlResults;
+    if (params?.updatePublishedResults !== undefined) body.updatePublishedResults = params.updatePublishedResults;
     if (params?.notifyWhenNotPending !== undefined) body.notifyWhenNotPending = params.notifyWhenNotPending;
     if (params?.dryRun !== undefined) body.dryRun = params.dryRun;
 

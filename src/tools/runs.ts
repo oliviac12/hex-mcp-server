@@ -3,7 +3,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 export const runTools: Tool[] = [
   {
     name: 'hex_run_project',
-    description: 'Execute a published Hex project with optional input parameters',
+    description: 'Execute a Hex project (AVOID unless fresh results needed). This triggers computation! For viewing dashboards, use hex_get_project_url instead. Only use this when: 1) Need fresh data, 2) Different inputs required, 3) User explicitly asks to "run".',
     inputSchema: {
       type: 'object',
       properties: {
@@ -15,6 +15,16 @@ export const runTools: Tool[] = [
           type: 'object',
           description: 'Input parameters for the project run',
           additionalProperties: true,
+        },
+        useCachedSqlResults: {
+          type: 'boolean',
+          description: 'Use cached SQL results when available (default: true)',
+          default: true,
+        },
+        updatePublishedResults: {
+          type: 'boolean',
+          description: 'Update the published app results (default: false)',
+          default: false,
         },
         updateCache: {
           type: 'boolean',
